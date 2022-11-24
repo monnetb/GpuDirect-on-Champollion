@@ -1,0 +1,6 @@
+osu-micro-benchmarks-7.0
+nccl-tests
+osu-micro-benchmarks-7.0.tar.gz
+scripts/run_mpi-tests.sh
+scripts/run_nccl-tests.sh
+scripts/build-osu-cuda.sh
