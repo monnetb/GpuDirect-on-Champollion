@@ -1,16 +1,13 @@
 #!/bin/bash
 
-pushd .
 export workDir="$PWD"
 
-cd ${workDir}
 
-rm -rf $workDir/nccl-tests
+rm -rf ${workDir}/nccl-tests
 git clone https://github.com/NVIDIA/nccl-tests.git
 
-pushd $PWD
 
-cd $workDir/nccl-tests
+cd ${workDir}/nccl-tests
 
 export GCC_VER=8.5.0
 export GCC_ROOT="/usr"
@@ -46,4 +43,4 @@ make clean
 #make MPI=1 VERBOSE=1 NVCC_GENCODE='-gencode=arch=compute_70,code=sm_70' # CFLAGS=$CFLAGS CPPFLAGS=$CPPFLAGS # MPI_HOME=$MPI_HOME NCCL_HOME=$NCCL_HOME CUDA_HOME=$CUDA_HOME
 make MPI=1 VERBOSE=1  MPI_HOME=$MPI_HOME NCCL_HOME=$NCCL_HOME CUDA_HOME=$CUDA_HOME
 
-popd .
+cd ${workDir}
