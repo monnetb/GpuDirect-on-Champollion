@@ -48,7 +48,7 @@ export OSU_ROOT="${PWD}/osu-micro-benchmarks-7.0/release-ofi/libexec/osu-micro-b
 
 export OMPI_MCA_btl=^openib
 
-export NCCL_DEBUG=INFO
+export NCCL_DEBUG=WARN #INFO
 #export NCCL_MIN_NCHANNELS=16
 export NCCL_IB_HCA=hsn0,hsn1,hsn2,hsn3 #^eth*
 #export NCCL_TOPO_DUMP_FILE=$PWD/6500-nccl-topo-ss.xml
@@ -62,175 +62,167 @@ export FI_CXI_COMPAT=0
 export FI_CXI_LLRING_MODE=never
 export FI_CXI_EQ_ACK_BATCH_SIZE=64
 
-#export FI_CXI_RX_MATCH_MODE=software
+#export FI_CXI_RX_MATCH_MODE=software @ -> This make NCCL hang forever !!
 export FI_CXI_REQ_BUF_MIN_POSTED=10
-export FI_CXI_REQ_BUF_SIZE=25165824
+export FI_CXI_REQ_BUF_SIZE=5331648 #25165824
 export FI_CXI_DEFAULT_CQ_SIZE=131072
-export FI_PROVIDER="^ofi_rxm"
-#export FI_PROVIDER="cxi"
-#export FI_PROVIDER_PATH=${OFI_ROOT}/lib
+export FI_PROVIDER="^ofi_rxm,efa,ofi_rxd"
 export NCCL_NET_GDR_LEVEL=3
 export FI_CXI_ATS=0
 export FI_HMEM_CUDA_USE_GDRCOPY=1
 
+export CXI_FORK_SAFE=1
+export FI_CXI_OPTIMIZED_MRS=false
+export CXI_FORK_SAFE_HP=1
+export FI_CXI_DISABLE_CQ_HUGETLB=1
+
 export MAX_MSG_SIZE=2097152 #33554432 # 16777216 #8388608
 
+export MPI_BIND=none #socket
+export MPI_VERBOSE=" -v --report-bindings  --mca mtl_base_verbose 100 -x NCCL_DEBUG=INFO" 
+export MPI_VERBOSE=" -v --report-bindings " 
+export MPI_VERBOSE=" " 
+
 export MPI_PARAM=" -x FI_LOG_PROV -x FI_CXI_COMPAT -x FI_CXI_EQ_ACK_BATCH_SIZE -x FI_CXI_REQ_BUF_MIN_POSTED -x FI_CXI_REQ_BUF_SIZE -x FI_CXI_DEFAULT_CQ_SIZE -x FI_PROVIDER -x NCCL_NET_GDR_LEVEL -x FI_CXI_ATS -x FI_HMEM_CUDA_USE_GDRCOPY "
+
+
+#echo ""
+#echo "OSU Latency: host to host"
+#`which mpirun` -np 2  \
+#    -host o186i239:1,o186i240:1 \
+#    ${MPI_PARAM} \
+#    ${MPI_VERBOSE} \
+#    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+#    -bind-to ${MPI_BIND} \
+#    -x PATH -x LD_LIBRARY_PATH \
+#    -x CUDA_VISIBLE_DEVICES=0 \
+#    unbuffer ${OSU_ROOT}/mpi/pt2pt/osu_latency 
+#
+#
+#echo ""
+#echo "OSU bandwidth: host to host"
+#`which mpirun` -np 2  \
+#    -host o186i239:1,o186i240:1 \
+#    ${MPI_PARAM} \
+#    ${MPI_VERBOSE} \
+#    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+#    -bind-to ${MPI_BIND} \
+#    -x PATH -x LD_LIBRARY_PATH \
+#    -x CUDA_VISIBLE_DEVICES=0 \
+#    unbuffer ${OSU_ROOT}/mpi/pt2pt/osu_bw 
+#
+echo ""
+echo "OSU multiple bandwidth: host to host"
+`which mpirun` -np 16  \
+    -host o186i239:8,o186i240:8 \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
+    -x PATH -x LD_LIBRARY_PATH \
+    -x CUDA_VISIBLE_DEVICES=0 \
+    unbuffer scripts/bind.slingshot-only.sh ${OSU_ROOT}/mpi/pt2pt/osu_mbw_mr 
+
+
+
 echo ""
 echo "AWS test "
     #--mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-`which mpirun` -v -np 2  \
+    #--mca mtl ofi --mca btl ^openib,ofi\
+`which mpirun` -np 2  \
+    ${MPI_VERBOSE} \
     ${MPI_PARAM} \
     -host o186i239:1,o186i240:1 \
-    --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to none \
-    --report-bindings \
+    --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
     ${AWS_OFI_NCCL}/bin/nccl_message_transfer
 
     
-echo ""
-echo "OSU multiple bandwidth: host to host - no binding"
-    #--mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-`which mpirun` -v -np 16  \
-    -host o186i239:8,o186i240:8 \
-    ${MPI_PARAM} \
-    --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to none \
-    -x NCCL_IB_HCA \
-    --report-bindings \
-    -x PATH -x LD_LIBRARY_PATH \
-    -x NCCL_DEBUG -x NCCL_IB_HCA \
-    -x CUDA_VISIBLE_DEVICES=0 \
-    ${OSU_ROOT}/mpi/pt2pt/osu_mbw_mr 
-
-
-#echo ""
-#echo "OSU multiple bandwidth: host to host - binding only cores"
-#`which mpirun` -v -np 16  \
-#    -host o186i239:8,o186i240:8 \
-#    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-#    -bind-to none \
-#    --report-bindings \
-#    -x PATH -x LD_LIBRARY_PATH \
-#    -x NCCL_DEBUG -x NCCL_IB_HCA \
-#    -x CUDA_VISIBLE_DEVICES=0 \
-#    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
-#    ./scripts/bind.slingshot-only.sh ${OSU_ROOT}/mpi/pt2pt/osu_mbw_mr 
-#
-#
-#echo ""
-#echo "OSU multiple bandwidth: host to host - bind to cores & HCA"
-#`which mpirun` -v -np 16  \
-#    -host o186i239:8,o186i240:8 \
-#    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-#    -bind-to none \
-#    --report-bindings \
-#    -x PATH -x LD_LIBRARY_PATH \
-#    -x NCCL_DEBUG -x NCCL_IB_HCA \
-#    -x CUDA_VISIBLE_DEVICES=0 \
-#    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
-#    ./scripts/bind.slingshot.sh ${OSU_ROOT}/mpi/pt2pt/osu_mbw_mr 
-#
-#echo ""
-#
-    #--mca mtl_ofi_provider_include "shm" \
-
-
-
-export CXI_FORK_SAFE=1
-export FI_CXI_OPTIMIZED_MRS=false
-
-export CXI_FORK_SAFE_HP=1
-export FI_CXI_DISABLE_CQ_HUGETLB=1
-	    
-echo "NCCL bandwidth: device to device"
-`which mpirun` -v -np 2  \
+echo "NCCL bandwidth: device to device - single rank"
+`which mpirun` -np 2  \
     -host o186i239:1,o186i240:1 \
     ${MPI_PARAM} \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    --mca mtl_base_verbose 100 \
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x NCCL_IB_HCA \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
-    ${OSU_ROOT}/nccl/pt2pt/osu_nccl_bw -m ${MAX_MSG_SIZE}  -d cuda D D
+    unbuffer scripts/bind.slingshot-only.sh ${OSU_ROOT}/nccl/pt2pt/osu_nccl_bw -m ${MAX_MSG_SIZE}  -d cuda D D
 
-exit
 
 echo ""
 echo "NCCL Bidirectional bandwidth: device to device"
-`which mpirun` -v -np 2  \
+`which mpirun` -np 2  \
     -host o186i239:1,o186i240:1 \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
     ${OSU_ROOT}/nccl/pt2pt/osu_nccl_bibw -m ${MAX_MSG_SIZE} -d cuda D D
 
 echo ""
 echo "NCCL Latency: device to device"
-`which mpirun` -v -np 2  \
+`which mpirun` -np 2  \
     -host o186i239:1,o186i240:1 \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
     ${OSU_ROOT}/nccl/pt2pt/osu_nccl_latency -d cuda D D
 
 echo ""
 echo "OSU bandwidth: host to host"
-`which mpirun` -v -np 2  \
+`which mpirun` -np 2  \
     -host o186i239:1,o186i240:1 \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
-    ${OSU_ROOT}/mpi/pt2pt/osu_bw 
+    unbuffer scripts/bind.slingshot-only.sh ${OSU_ROOT}/mpi/pt2pt/osu_bw 
 
 echo ""
 echo "OSU multiple bandwidth: host to host"
-`which mpirun` -v -np 16  \
+`which mpirun` -np 16  \
     -host o186i239:8,o186i240:8 \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
-    ${OSU_ROOT}/mpi/pt2pt/osu_mbw_mr 
+    unbuffer scripts/bind.slingshot-only.sh ${OSU_ROOT}/mpi/pt2pt/osu_mbw_mr 
 
 echo ""
 echo ""
 echo "OSU Latency: host to host"
-`which mpirun` -v -np 2  \
+`which mpirun` -np 2  \
     -host o186i239:1,o186i240:1 \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
-    ${OSU_ROOT}/mpi/pt2pt/osu_latency 
+    unbuffer scripts/bind.slingshot-only.sh ${OSU_ROOT}/mpi/pt2pt/osu_latency 
 
 echo ""
 echo "OSU Latency: device to device"
 #-npernode 1
-`which mpirun` -v -np 2  \
+`which mpirun` -np 2  \
     -host o186i239:1,o186i240:1 \
-    --mca pml cm --mca mtl ofi --mca btl ^openib,ofi\
-    -bind-to numa \
-    --report-bindings \
+    ${MPI_PARAM} \
+    ${MPI_VERBOSE} \
+    --mca pml cm --mca mtl ofi --mca btl self,ofi\
+    -bind-to ${MPI_BIND} \
     -x PATH -x LD_LIBRARY_PATH \
     -x CUDA_VISIBLE_DEVICES=0 \
-    -x CUDA_DISABLE_UNIFIED_MEMORY=1 \
     ${OSU_ROOT}/mpi/pt2pt/osu_latency  -d cuda D D 

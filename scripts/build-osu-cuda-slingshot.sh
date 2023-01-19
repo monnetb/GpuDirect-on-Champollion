@@ -42,13 +42,13 @@ if [[ ! -f "$OSU" ]]
 then
     wget http://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-7.0.tar.gz
 fi
-rm -rf osu-micro-benchmarks-7.0 > /dev/null
+rm -rf osu-micro-benchmarks-7.0/release-ofi > /dev/null
 tar xf osu*gz
 
 export curdir=$PWD
 
 cd osu-micro-benchmarks-7.0
 ./configure CC=mpicc CXX=mpicxx -prefix="${curdir}/osu-micro-benchmarks-7.0/release-ofi" --enable-ncclomb --with-nccl=${NCCL_ROOT} --enable-cuda --with-cuda="${CUDA_HOME}"
-
+make clean
 make -j
 make install
